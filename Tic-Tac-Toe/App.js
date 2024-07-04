@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ImageBackground, Pressable, Alert } from 'react-native';
 import Circle from './src/components/Circle';
 import Cross from './src/components/Cross';
@@ -15,6 +15,14 @@ export default function App() {
     [" ", " ", " "] //third row
   ]);
 
+  useEffect(() => {
+    if (turn === 'o') {
+      setTimeout(() => {
+        botTurn();
+      }, 1000);
+    }
+  }, [turn])
+
   const playersTurn = (rowIndex, cellIndex) => {
     if (gameMap[rowIndex][cellIndex] !== " ") {
       Alert.alert('Invalid Move', 'This cell is already taken');
@@ -25,11 +33,15 @@ export default function App() {
       currentMap[rowIndex][cellIndex] = turn;
       return currentMap;
     });
+
     setPlayer(player === 1 ? 2 : 1);
+
     setTurn(turn === 'x' ? 'o' : 'x');
-    const winner = checkWin();
+
+    const winner = checkWin(gameMap);
     if (winner) {
-      gameWon(winner)
+      gameWon(winner);
+      setTurn(winner);
     } else {
       checkTie();
     }
@@ -44,11 +56,11 @@ export default function App() {
     setPlayer(1);
   }
 
-  const checkWin = () => {
+  const checkWin = (winnerMap) => {
     // Check rows
     for (let i = 0; i < 3; i++) {
-      const isXWinner = gameMap[i].every(cell => cell === 'x');
-      const isYWinner = gameMap[i].every(cell => cell === 'o');
+      const isXWinner = winnerMap[i].every(cell => cell === 'x');
+      const isYWinner = winnerMap[i].every(cell => cell === 'o');
       if (isXWinner) {
         return 'x'
       }
@@ -63,10 +75,10 @@ export default function App() {
       let isColumnXWinner = true;
       let isColumnYWinner = true;
       for (let j = 0; j < 3; j++) {
-        if (gameMap[j][i] !== 'x') {
+        if (winnerMap[j][i] !== 'x') {
           isColumnXWinner = false;
         }
-        if (gameMap[j][i] !== 'o') {
+        if (winnerMap[j][i] !== 'o') {
           isColumnYWinner = false;
         }
       }
@@ -87,16 +99,16 @@ export default function App() {
     let isReverseDiagonalOWinner = true;
     for (let i = 0; i < 3; i++) {
 
-      if (gameMap[i][i] !== 'x') {
+      if (winnerMap[i][i] !== 'x') {
         isDiagonalXWinner = false;
       }
-      if (gameMap[i][i] !== 'o') {
+      if (winnerMap[i][i] !== 'o') {
         isDiagonalOWinner = false;
       }
-      if (gameMap[i][2 - i] !== 'x') {
+      if (winnerMap[i][2 - i] !== 'x') {
         isReverseDiagonalXWinner = false;
       }
-      if (gameMap[i][2 - i] !== 'o') {
+      if (winnerMap[i][2 - i] !== 'o') {
         isReverseDiagonalOWinner = false;
       }
 
@@ -127,6 +139,38 @@ export default function App() {
 
   const gameWon = (winner) => {
     Alert.alert(`Player ${winner} Wins`, 'Congratulations');
+  }
+
+  const botTurn = () => {
+    //collecting all possible outcomes
+    const possiblePositions = [];
+    gameMap.forEach((row, rowIndex) => {
+      row.forEach((cell, cellIndex) => {
+        if (cell === ' ') {
+          possiblePositions.push({ row: rowIndex, cell: cellIndex });
+        }
+      })
+    })
+
+    let chosenOption;
+    // defending
+    possiblePositions.forEach(possiblePositions => {
+      const mapCopy = JSON.parse(JSON.stringify(gameMap));
+      mapCopy[possiblePositions.row][possiblePositions.cell] = 'x';
+
+      const winner = checkWin(mapCopy)
+      if (winner === 'x') {
+        chosenOption = possiblePositions;
+      }
+    })
+    //choosing random option
+    if (!chosenOption) {
+      chosenOption = possiblePositions[Math.floor(Math.random() * possiblePositions.length)];
+    }
+    if (chosenOption) {
+      playersTurn(chosenOption.row, chosenOption.cell)
+    }
+
   }
 
   return (
